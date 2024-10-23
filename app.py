@@ -1,0 +1,85 @@
+from flask import Flask, render_template, request, redirect, url_for, flash
+import os
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Use 'Agg' backend for non-GUI environments
+import matplotlib.pyplot as plt
+
+app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key')
+
+# Ensure the uploads folder exists
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Ensure the static folder exists for saving plots
+PLOT_FOLDER = os.path.join(os.getcwd(), 'static')
+if not os.path.exists(PLOT_FOLDER):
+    os.makedirs(PLOT_FOLDER)
+
+app.config['PLOT_FOLDER'] = PLOT_FOLDER
+
+# Home route where users can upload a CSV file
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+# Route to handle file upload and process it
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        flash('No file part')
+        return redirect(url_for('index'))
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        flash('No selected file')
+        return redirect(url_for('index'))
+    
+    if file and file.filename.endswith('.csv'):
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(file_path)
+        
+        # Process the CSV with Pandas
+        data = pd.read_csv(file_path)
+        
+        # Calculate statistics
+        average_study_hours = data['Study Hours'].mean()
+        average_exam_score = data['Exam Score'].mean()
+        
+        # Generate a bar chart for study hours
+        plot_path_bar = os.path.join(app.config['PLOT_FOLDER'], 'study_hours.png')
+        plt.figure()
+        plt.bar(data['Name'], data['Study Hours'], color='skyblue')
+        plt.xlabel('Students')
+        plt.ylabel('Study Hours')
+        plt.title('Study Hours per Student')
+        plt.tight_layout()
+        plt.savefig(plot_path_bar)
+        plt.close()
+        
+        # Generate a scatter plot for study hours vs exam scores
+        plot_path_scatter = os.path.join(app.config['PLOT_FOLDER'], 'study_vs_scores.png')
+        plt.figure()
+        plt.scatter(data['Study Hours'], data['Exam Score'], color='green')
+        plt.xlabel('Study Hours')
+        plt.ylabel('Exam Score')
+        plt.title('Study Hours vs Exam Scores')
+        plt.tight_layout()
+        plt.savefig(plot_path_scatter)
+        plt.close()
+
+        # Pass the statistics and plot paths to the results page
+        return render_template('results.html', avg_study=average_study_hours, avg_score=average_exam_score, 
+                       plot_url_bar='static/study_hours.png', plot_url_scatter='static/study_vs_scores.png',
+                       students=data.to_dict(orient='records'))
+    
+    flash('Invalid file format. Please upload a CSV file.')
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
