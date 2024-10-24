@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Results</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
 </head>
@@ -15,17 +15,21 @@
         <p>Average Study Hours: <strong>{{ avg_study }}</strong></p>
         <p>Average Exam Score: <strong>{{ avg_score }}</strong></p>
         
-        <!-- Display the Bar Chart -->
+        <!-- Display the Bar Chart if it exists -->
+        {% if plot_url_bar %}
         <h3>Study Hours per Student</h3>
         <img src="{{ plot_url_bar }}" alt="Study Hours Bar Chart" class="img-fluid">
-
-        <!-- Display the Scatter Plot -->
+        {% endif %}
+        
+        <!-- Display the Scatter Plot if it exists -->
+        {% if plot_url_scatter %}
         <h3>Study Hours vs Exam Scores</h3>
         <img src="{{ plot_url_scatter }}" alt="Study Hours vs Exam Scores" class="img-fluid">
+        {% endif %}
         
         <!-- Table for Student Data -->
         <h3>Student Data</h3>
-        <table id="studentTable" class="display">
+        <table id="studentTable" class="display table table-striped">
             <thead>
                 <tr>
                     <th>Student ID</th>
@@ -61,4 +65,4 @@
         });
     </script>
 </body>
-</html>
+</html

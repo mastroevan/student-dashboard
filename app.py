@@ -46,37 +46,65 @@ def upload_file():
         
         # Process the CSV with Pandas
         data = pd.read_csv(file_path)
+        num_rows = data.shape[0]  # Get the number of rows (students)
         
         # Calculate statistics
         average_study_hours = data['Study Hours'].mean()
         average_exam_score = data['Exam Score'].mean()
         
-        # Generate a bar chart for study hours
-        plot_path_bar = os.path.join(app.config['PLOT_FOLDER'], 'study_hours.png')
-        plt.figure()
-        plt.bar(data['Name'], data['Study Hours'], color='skyblue')
-        plt.xlabel('Students')
-        plt.ylabel('Study Hours')
-        plt.title('Study Hours per Student')
-        plt.tight_layout()
-        plt.savefig(plot_path_bar)
-        plt.close()
+        plot_url_bar = None
+        plot_url_scatter = None
         
-        # Generate a scatter plot for study hours vs exam scores
-        plot_path_scatter = os.path.join(app.config['PLOT_FOLDER'], 'study_vs_scores.png')
-        plt.figure()
-        plt.scatter(data['Study Hours'], data['Exam Score'], color='green')
-        plt.xlabel('Study Hours')
-        plt.ylabel('Exam Score')
-        plt.title('Study Hours vs Exam Scores')
-        plt.tight_layout()
-        plt.savefig(plot_path_scatter)
-        plt.close()
+        # Define a threshold for "large" datasets (e.g., 100 students)
+        threshold = 100
+        
+        if num_rows <= threshold:
+            # Generate a bar chart for study hours (if the dataset is manageable)
+            plot_path_bar = os.path.join(app.config['PLOT_FOLDER'], 'study_hours.png')
+            plt.figure()
+            plt.bar(data['Name'][:50], data['Study Hours'][:50], color='skyblue')  # Limit to first 50 students
+            plt.xlabel('Students')
+            plt.ylabel('Study Hours')
+            plt.title('Study Hours per Student')
+            plt.tight_layout()
+            plt.savefig(plot_path_bar)
+            plt.close()
+            plot_url_bar = 'static/study_hours.png'
+        
+            # Generate a scatter plot for study hours vs exam scores
+            plot_path_scatter = os.path.join(app.config['PLOT_FOLDER'], 'study_vs_scores.png')
+            plt.figure()
+            plt.scatter(data['Study Hours'], data['Exam Score'], color='green')
+            plt.xlabel('Study Hours')
+            plt.ylabel('Exam Score')
+            plt.title('Study Hours vs Exam Scores')
+            plt.tight_layout()
+            plt.savefig(plot_path_scatter)
+            plt.close()
+            plot_url_scatter = 'static/study_vs_scores.png'
+        
+        else:
+            # Aggregate study hours into bins and calculate the mean score per bin
+            data['Study Hour Group'] = pd.cut(data['Study Hours'], bins=5)
+            grouped_data = data.groupby('Study Hour Group')['Exam Score'].mean().reset_index()
+            
+            # Generate a bar chart for aggregated data
+            plot_path_bar = os.path.join(app.config['PLOT_FOLDER'], 'study_hours_grouped.png')
+            plt.figure()
+            plt.bar(grouped_data['Study Hour Group'].astype(str), grouped_data['Exam Score'], color='skyblue')
+            plt.xlabel('Study Hour Groups')
+            plt.ylabel('Average Exam Score')
+            plt.title('Average Exam Score by Study Hour Group')
+            plt.tight_layout()
+            plt.savefig(plot_path_bar)
+            plt.close()
+            plot_url_bar = 'static/study_hours_grouped.png'
 
-        # Pass the statistics and plot paths to the results page
+            flash(f"The dataset contains {num_rows} students, visualizing aggregated data by study hour groups.")
+
+        # Pass the statistics and optional plot paths to the results page
         return render_template('results.html', avg_study=average_study_hours, avg_score=average_exam_score, 
-                       plot_url_bar='static/study_hours.png', plot_url_scatter='static/study_vs_scores.png',
-                       students=data.to_dict(orient='records'))
+                               plot_url_bar=plot_url_bar, plot_url_scatter=plot_url_scatter, students=data.to_dict(orient='records'))
     
     flash('Invalid file format. Please upload a CSV file.')
     return redirect(url_for('index'))
